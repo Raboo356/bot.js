@@ -10,7 +10,7 @@ function createBot() {
 
     bot.on('spawn', () => {
         console.log(`[Bot] El bot ha aparecido en el mundo.`);
-        // Si tu servidor tiene contraseña, borra las '//' de la línea de abajo:
+        // Si tu servidor tiene contraseña, borra las '//' de abajo:
         // setTimeout(() => bot.chat('/login TuContrasenaAqui'), 4000);
     });
 
@@ -18,15 +18,44 @@ function createBot() {
         console.log(`[Bot] Conectado exitosamente al servidor.`);
     });
 
-    // Anti-AFK suave: Mira a los lados de forma aleatoria para no activar alertas
-    setInterval(() => {
-        if (bot && bot.entity) {
-            const yaw = Math.random() * Math.PI * 2;
-            const pitch = (Math.random() - 0.5) * Math.PI;
-            bot.look(yaw, pitch, false);
-            console.log('[Bot] Mirando a otra dirección para seguir activo.');
+    // Rutina interactiva: Buscar cofre, abrirlo y saltar (Cada 45 segundos)
+    setInterval(async () => {
+        if (!bot || !bot.entity) return;
+
+        try {
+            // 1. Buscar el cofre más cercano en un radio de 5 bloques
+            const chestBlock = bot.findBlock({
+                matching: bot.registry.blocksByName.chest.id,
+                maxDistance: 5
+            });
+
+            if (chestBlock) {
+                console.log('[Bot] Cofre encontrado. Caminando a abrirlo...');
+                
+                // 2. Abrir el cofre
+                const chest = await bot.openChest(chestBlock);
+                console.log('[Bot] Cofre abierto con éxito.');
+                
+                // Esperar 2 segundos simulando que revisa el inventario
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // 3. Cerrar el cofre
+                chest.close();
+                console.log('[Bot] Cofre cerrado.');
+            } else {
+                console.log('[Bot] No encontré ningún cofre cerca de mi posición.');
+            }
+
+            // 4. Realizar la acción de saltar
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            bot.setControlState('jump', true);
+            setTimeout(() => bot.setControlState('jump', false), 500);
+            console.log('[Bot] Saltando para mantener activa la sesión.');
+
+        } catch (err) {
+            console.log(`[Bot] Error durante la rutina: ${err.message}`);
         }
-    }, 40000);
+    }, 45000);
 
     // Esperar 25 segundos antes de reintentar si es expulsado
     bot.on('end', (reason) => {
